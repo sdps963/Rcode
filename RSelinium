@@ -1,0 +1,66 @@
+#Loading Packages
+library(RSelenium)
+
+
+#Starting Selenium server
+driver <- rsDriver(browser = "chrome")
+mybrowser <- driver[["client"]]
+
+#Navigating to intelex website
+intelex <- "https://clients.intelex.com/Login3/Barrick/Application/Reports"
+mybrowser$navigate(intelex)
+
+#Filtering for the AuOps EHS data
+advancedlinkbutton <- mybrowser$findElement(using = "css selector", "#GridAdvancedSearchActionLink43")
+advancedlinkbutton$clickElement()
+caption <- mybrowser$findElement(using = "css selector", "#RepDataDefinitionEntityInventory_Filter_Caption_Value")
+caption$sendKeysToElement(list("AuOps"))
+applybutton <- mybrowser$findElement(using = "css selector", "#RepDataDefinitionEntityInventory_container > div.grid-wrapper > div.filter-container > div.footer > div.button.blue > div.button-text")
+applybutton$clickElement()
+
+#Clicking the export icon
+mybrowser$navigate(intelex)
+export <- mybrowser$findElement(using = "css selector", "#fb8be24c-45bb-4538-9bae-14c16c2671ea > td.data-cell.first-column.noExportToExcel > a.convertOptions.exportIcon")
+export$clickElement()
+
+#Exporting as a csv
+export_csv <- mybrowser$findElement(using = "css selector", "#fb8be24c-45bb-4538-9bae-14c16c2671ea > td.data-cell.first-column.noExportToExcel > a.convertOptions.exportIcon > div > ul > li.CSV")
+export_csv$clickElement()
+
+#Letting system sleep for 2 seconds so page can load
+Sys.sleep(2)
+
+#Deselecting so only the underlying data will be downloaded
+deselect <- mybrowser$findElement(using = "id", "57e9aa31-ef7a-4ea8-9ad4-863f7685697f")
+deselect$clickElement()
+
+#Exporting the csv file to the downloads
+export_final <- mybrowser$findElement(using = "css selector", "#export-button > span")
+export_final$clickElement()
+
+#Making sure csv download had enough time to download
+Sys.sleep(30)
+
+#Loading packages necessary to pull the downloaded intelex data and write it to the network
+library(tidyverse)
+library(xlsx)
+
+#Getting list of file names
+files <- list.files(path = "C:\\\\Users\\\\bjenkins\\\\Downloads", pattern = ".csv", full.names = TRUE, recursive = TRUE)
+
+#Grabbing the name of the most recently downloaded intelex file
+newest_file <- files[1]
+
+#Importing intelex data into R
+dat <- read_csv(newest_file)
+attributes(dat)$class <- "data.frame"
+
+#Local file location
+#write.xlsx(dat, "C:\\\\Users\\\\bjenkins\\\\Documents\\\\barrick-ds\\\\data\\\\Intelex EHS Data\\\\AuOpsEHS.xlsx")
+
+#Changing working directory to the network
+setwd("//usasnvfs1/Barrick_Nevada_AUOPS/Reference Docs/EHS Intelex Data/")
+
+#Pushing the intelex data to the network
+write.xlsx(dat, "AuOpsEHSData.xlsx", sheetName = "underlying data", showNA = F, row.names = F)
+
